@@ -66,7 +66,7 @@ public class TicketingDS implements TicketingSystem {
 			nonAtomic = routeDs.nonAtomic[i];
 			if ((nonAtomic & (target)) == 0) {
 				newValue = nonAtomic | target;
-				if (nonAtomic == routeDs.atomic[i].compareAndExchange(nonAtomic, newValue)) {
+				if (routeDs.atomic[i].compareAndSet(nonAtomic, newValue)) {
 					routeDs.nonAtomic[i] = newValue;
 					return new MyTicket(ticketId.getAndIncrement(), passenger, route, (i / this.seatsPerCoach) + 1,
 							(i % this.seatsPerCoach) + 1, departure, arrival);
@@ -105,7 +105,7 @@ public class TicketingDS implements TicketingSystem {
 			nonAtomic = routeDs.nonAtomic[seqSeat];
 			if ((nonAtomic & (target)) == target) {
 				newValue = nonAtomic & ((~target) & seatMask);
-				if (nonAtomic == routeDs.atomic[seqSeat].compareAndExchange(nonAtomic, newValue)) {
+				if (routeDs.atomic[seqSeat].compareAndSet(nonAtomic, newValue)) {
 					routeDs.nonAtomic[seqSeat] = newValue;
 					return true;
 				}
