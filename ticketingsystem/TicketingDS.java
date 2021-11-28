@@ -14,20 +14,32 @@ class MyTicket extends Ticket {
 		this.departure = departure;
 		this.arrival = arrival;
 	}
+	@Override
+	public boolean equals(Object obj) {
+		MyTicket ticket = (MyTicket) obj;
+		return this.tid==ticket.tid&&this.passenger==ticket.passenger&&
+		this.route==ticket.route&&this.coach==ticket.coach&&
+		this.seat==ticket.seat&&this.departure==ticket.departure&&this.arrival==ticket.arrival;
+	}
 }
 
 class RouteDs {
 	int size;
 	AtomicInteger[] atomic;
 	int[] nonAtomic;
+	Ticket[][] tickets;
 
-	RouteDs(int size) {
+	RouteDs(int size,int stationNum) {
 		this.size = size;
 		atomic = new AtomicInteger[size];
 		nonAtomic = new int[size];
 		for (int i = 0; i < size; i++) {
 			atomic[i] = new AtomicInteger(0);
 			nonAtomic[i] = 0;
+		}
+		this.tickets=new Ticket[size][];
+		for(int i=0;i<size;i++){
+			this.tickets[i]=new Ticket[stationNum];
 		}
 	}
 }
@@ -37,7 +49,6 @@ public class TicketingDS implements TicketingSystem {
 	// ToDo
 	ArrayList<RouteDs> routes;
 	AtomicLong ticketId;
-	// int totalSeat;
 	int coachesPerRoute;
 	int seatsPerCoach;
 	final int seatMask;
@@ -45,31 +56,31 @@ public class TicketingDS implements TicketingSystem {
 	TicketingDS(int routenum, int coachnum, int seatnum, int stationnum, int threadnum) {
 		routes = new ArrayList<>();
 		for (int i = 0; i < routenum; i++) {
-			routes.add(new RouteDs(coachnum * seatnum));
+			routes.add(new RouteDs(coachnum * seatnum,stationnum));
 		}
-		// System.out.println("coachnum"+coachnum);
 		this.coachesPerRoute = coachnum;
 		this.seatsPerCoach = seatnum;
-		// this.totalSeat = coachnum * seatnum;
 		// 这个原子变量是一个竞争的节点，但我觉得冲突访问的机率不大。
 		ticketId = new AtomicLong(0);
-		seatMask = ((2 << this.seatsPerCoach * this.coachesPerRoute) >> 1) - 1;
+		seatMask = (1 << this.seatsPerCoach * this.coachesPerRoute) - 1;
 	}
 
 	public Ticket buyTicket(String passenger, int route, int departure, int arrival) {
 		RouteDs routeDs = routes.get(route - 1);
 		int nonAtomic;
 		// 00000110000
-		int target = ((2 << (arrival - 1)) - (2 << (departure - 1))) >> 1;
+		int target = (1 << (arrival - 1)) - (1 << (departure - 1));
 		int newValue;
 		for (int i = 0; i < routeDs.size; i++) {
 			nonAtomic = routeDs.nonAtomic[i];
-			if ((nonAtomic & (target)) == 0) {
+			if ((nonAtomic & target) == 0) {
 				newValue = nonAtomic | target;
 				if (routeDs.atomic[i].compareAndSet(nonAtomic, newValue)) {
 					routeDs.nonAtomic[i] = newValue;
-					return new MyTicket(ticketId.getAndIncrement(), passenger, route, (i / this.seatsPerCoach) + 1,
-							(i % this.seatsPerCoach) + 1, departure, arrival);
+					Ticket ticket = new MyTicket(ticketId.getAndIncrement(), passenger, route, (i / this.seatsPerCoach) + 1,
+					(i % this.seatsPerCoach) + 1, departure, arrival);
+					routeDs.tickets[i][departure-1]=ticket;
+					return ticket;
 				}
 			}
 		}
@@ -80,10 +91,10 @@ public class TicketingDS implements TicketingSystem {
 		int result = 0;
 		RouteDs routeDs = routes.get(route - 1);
 		int nonAtomic;
-		int target = ((2 << (arrival - 1)) - (2 << (departure - 1))) >> 1;
+		int target = (1 << (arrival - 1)) - (1 << (departure - 1));
 		for (int i = 0; i < routeDs.size; i++) {
 			nonAtomic = routeDs.nonAtomic[i];
-			if ((nonAtomic & (target)) == 0) {
+			if ((nonAtomic & target) == 0) {
 				result ++;
 			}
 		}
@@ -100,12 +111,15 @@ public class TicketingDS implements TicketingSystem {
 			RouteDs routeDs = routes.get(route - 1);
 			int nonAtomic;
 			// 00000110000
-			int target = ((2 << (arrival - 1)) - (2 << (departure - 1))) >> 1;
+			int target = (1 << (arrival - 1)) - (1 << (departure - 1));
 			int newValue;
 			nonAtomic = routeDs.nonAtomic[seqSeat];
-			if ((nonAtomic & (target)) == target) {
+			if ((nonAtomic & target) == target) {
 				newValue = nonAtomic & ((~target) & seatMask);
 				if (routeDs.atomic[seqSeat].compareAndSet(nonAtomic, newValue)) {
+					if(!routeDs.tickets[seqSeat][departure-1].equals(ticket)){
+						return false;
+					}
 					routeDs.nonAtomic[seqSeat] = newValue;
 					return true;
 				}

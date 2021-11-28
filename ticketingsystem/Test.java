@@ -3,6 +3,7 @@ package ticketingsystem;
 import java.util.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 class ThreadId {
     // Atomic integer containing the next thread ID to be assigned
@@ -23,16 +24,15 @@ class ThreadId {
 }
 
 public class Test {
-	static int op=0;
-	final static int threadnum = 16;
-	final static int routenum = 15; // route is designed from 1 to 3
-	final static int coachnum = 15; // coach is arranged from 1 to 5
-	final static int seatnum = 127; // seat is allocated from 1 to 20
-	final static int stationnum = 30; // station is designed from 1 to 5
+	final static int threadnum = 25;
+	final static int routenum = 3; // route is designed from 1 to 3
+	final static int coachnum = 5; // coach is arranged from 1 to 5
+	final static int seatnum = 20; // seat is allocated from 1 to 20
+	final static int stationnum = 5; // station is designed from 1 to 5
 
-	final static int testnum = 10000;
-	final static int retpc = 30; // return ticket operation is 10% percent
-	final static int buypc = 60; // buy ticket operation is 30% percent
+	final static int testnum = 1000000;
+	final static int retpc = 10; // return ticket operation is 10% percent
+	final static int buypc = 40; // buy ticket operation is 30% percent
 	final static int inqpc = 100; //inquiry ticket operation is 60% percent
 	
 	static String passengerName() {
@@ -42,81 +42,63 @@ public class Test {
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-        
-		 
 		Thread[] threads = new Thread[threadnum];
+		AtomicLong time = new AtomicLong(0);
 		
 		final TicketingDS tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
-		
-		final long startTime = System.nanoTime();
-	    
-	for (int i = 0; i< threadnum; i++) {
-	    	threads[i] = new Thread(new Runnable() {
-                public void run() {
-            		Random rand = new Random();
-                	Ticket ticket = new Ticket();
-            		ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
-            		
-             		for (int i = 0; i < testnum; i++) {
-            			int sel = rand.nextInt(inqpc);
-            			if (0 <= sel && sel < retpc && soldTicket.size() > 0) { // return ticket
-            				int select = rand.nextInt(soldTicket.size());
-           				if ((ticket = soldTicket.remove(select)) != null) {
-											// long preTime = System.nanoTime() - startTime;
-											op++;
-            					if (tds.refundTicket(ticket)) {
-									// 			long postTime = System.nanoTime() - startTime;
-            						// System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketRefund" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach  + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
-            						// System.out.flush();
-            					} else {
-            						// System.out.println(preTime + " " + String.valueOf(System.nanoTime()-startTime) + " " + ThreadId.get() + " " + "ErrOfRefund");
-            						// System.out.flush();
-            					}
-            				} else {
-								// 			long preTime = System.nanoTime() - startTime;
-            					// System.out.println(preTime + " " + String.valueOf(System.nanoTime()-startTime) + " " + ThreadId.get() + " " + "ErrOfRefund");
-        						// System.out.flush();
-            				}
-            			} else if (retpc <= sel && sel < buypc) { // buy ticket
-            				String passenger = passengerName();
-            				int route = rand.nextInt(routenum) + 1;
-            				int departure = rand.nextInt(stationnum - 1) + 1;
-            				int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
-										// long preTime = System.nanoTime() - startTime;
-										op++;
-            				if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) {
-											// long postTime = System.nanoTime() - startTime;
-            					// System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketBought" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
-            					soldTicket.add(ticket);
-        						// System.out.flush();
-            				} else {
-            					// System.out.println(preTime + " " + String.valueOf(System.nanoTime()-startTime) + " " + ThreadId.get() + " " + "TicketSoldOut" + " " + route + " " + departure+ " " + arrival);
-        						// System.out.flush();
-            				}
-            			} else if (buypc <= sel && sel < inqpc) { // inquiry ticket
-            				
-            				int route = rand.nextInt(routenum) + 1;
-            				int departure = rand.nextInt(stationnum - 1) + 1;
-            				int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
-										// long preTime = System.nanoTime() - startTime;
-										op++;
-            				int leftTicket = tds.inquiry(route, departure, arrival);
-										// long postTime = System.nanoTime() - startTime;
-            				// System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "RemainTicket" + " " + leftTicket + " " + route+ " " + departure+ " " + arrival);
-    						// System.out.flush();  
-    						         			
-            			}
-            		}
 
-                }
-            });
-              threads[i].start();
- 	    }
-	
+		for (int i = 0; i< threadnum; i++) {
+			threads[i] = new Thread(new Runnable() {
+				public void run() {
+					Random rand = new Random();
+					Ticket ticket = new Ticket();
+					ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
+				
+					for (int i = 0; i < testnum; i++) {
+						int sel = rand.nextInt(inqpc);
+						if (0 <= sel && sel < retpc && soldTicket.size() > 0) { // return ticket
+							int select = rand.nextInt(soldTicket.size());
+							if ((ticket = soldTicket.remove(select)) != null) {
+								// long startTime = System.nanoTime();
+								tds.refundTicket(ticket);
+								// long endTime = System.nanoTime();
+								// time.addAndGet(endTime-startTime);
+							}
+						} else if (retpc <= sel && sel < buypc) { // buy ticket
+							String passenger = passengerName();
+							int route = rand.nextInt(routenum) + 1;
+							int departure = rand.nextInt(stationnum - 1) + 1;
+							int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+							// long startTime = System.nanoTime();
+							
+							if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) {
+								// long endTime = System.nanoTime();
+							    // time.addAndGet(endTime-startTime);
+								soldTicket.add(ticket);
+							}
+						} else if (buypc <= sel && sel < inqpc) { // inquiry ticket
+							int route = rand.nextInt(routenum) + 1;
+							int departure = rand.nextInt(stationnum - 1) + 1;
+							int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+							// long startTime = System.nanoTime();
+							tds.inquiry(route, departure, arrival);
+							// long endTime = System.nanoTime();
+							// time.addAndGet(endTime-startTime);
+						}
+					}
+				}
+			});
+		}
+
+		long startTime = System.nanoTime();
+		for (int i = 0; i< threadnum; i++) {
+			threads[i].start();
+	    }
 	    for (int i = 0; i< threadnum; i++) {
 	    	threads[i].join();
 	    }
-		final long endTime = System.nanoTime();
-		System.out.println("time"+(endTime-startTime)+" ops"+op/((endTime-startTime)/1000000.0)+" thread"+threadnum);
+		long endTime = System.nanoTime();
+		System.out.println("time"+((endTime-startTime)/1000000.0)+" ops"+threadnum*testnum/((endTime-startTime)/1000000.0)+" thread"+threadnum);
+		System.out.println("time"+time.get()+" ops"+threadnum*testnum/(time.get()/1000000.0)+" thread"+threadnum);
 	}
 }
