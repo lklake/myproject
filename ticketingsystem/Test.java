@@ -25,12 +25,12 @@ class ThreadId {
 
 public class Test {
 	final static int threadnum = 64;
-	final static int routenum = 10; // route is designed from 1 to 3
-	final static int coachnum = 10; // coach is arranged from 1 to 5
+	final static int routenum = 5; // route is designed from 1 to 3
+	final static int coachnum = 8; // coach is arranged from 1 to 5
 	final static int seatnum = 100; // seat is allocated from 1 to 20
-	final static int stationnum = 20; // station is designed from 1 to 5
+	final static int stationnum = 10; // station is designed from 1 to 5
 
-	final static int testnum = 100000;
+	final static int testnum = 20000;
 	final static int retpc = 10; // return ticket operation is 10% percent
 	final static int buypc = 40; // buy ticket operation is 30% percent
 	final static int inqpc = 100; //inquiry ticket operation is 60% percent
@@ -70,10 +70,11 @@ public class Test {
 							int departure = rand.nextInt(stationnum - 1) + 1;
 							int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
 							// long startTime = System.nanoTime();
-							
-							if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) {
-								// long endTime = System.nanoTime();
-							    // time.addAndGet(endTime-startTime);
+							ticket = tds.buyTicket(passenger, route, departure, arrival);
+							// long endTime = System.nanoTime();
+							// time.addAndGet(endTime-startTime);
+							if ((ticket) != null) {
+								
 								soldTicket.add(ticket);
 							}
 						} else if (buypc <= sel && sel < inqpc) { // inquiry ticket
@@ -99,6 +100,6 @@ public class Test {
 	    }
 		long endTime = System.nanoTime();
 		System.out.println("time"+((endTime-startTime)/1000000.0)+" ops"+threadnum*testnum/((endTime-startTime)/1000000.0)+" thread"+threadnum);
-		System.out.println("time"+time.get()+" ops"+threadnum*testnum/(time.get()/1000000.0)+" thread"+threadnum);
+		// System.out.println("time"+time.get()+" ops"+threadnum*testnum/(time.get()/1000000.0)+" thread"+threadnum);
 	}
 }

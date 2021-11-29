@@ -103,7 +103,7 @@ public class TicketingDS implements TicketingSystem {
 
 	public boolean refundTicket(Ticket ticket) {
 		boolean result = false;
-		try {
+		// try {
 			int route = ticket.route;
 			int arrival = ticket.arrival;
 			int departure = ticket.departure;
@@ -124,9 +124,9 @@ public class TicketingDS implements TicketingSystem {
 					return true;
 				}
 			}
-		} catch (Exception e) {
-			result = false;
-		}
+		// } catch (Exception e) {
+			// result = false;
+		// }
 		return result;
 	}
 	// public boolean buyTicketReplay(Ticket ticket);
